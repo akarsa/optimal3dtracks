@@ -28,6 +28,8 @@ from ipywidgets import interact
 
 
 def show_4d_with_contours(im,seg):
+    # im: 3D grayscale image normalised between 0 and 1
+    # seg: 3D integer label map
     
     n_timepoints = im.shape[0]
     n_slices = im.shape[1]
@@ -83,15 +85,22 @@ def show_4d_with_contours(im,seg):
 # In[]: Plot division tree
 
 def generate_tree(track_df,split_df,merge_df):
-    #Function to arrange nodes for better visualisation   
+    # Function to arrange nodes for better visualisation
+    # track_df: dataframe containing the tracks from create_tracks (see example script for usage)
+    #           necessary columns = 'track_id', 'timepoint'
+    #           This dataframe might contain and additional column called "colours" for specifying 
+    #           the colours to be used to plot each cell at each time point
+    # split_df: dataframe containing cell divisions from create_tracks (see example script for usage)
+    #           necessary columns = 'parent', 'child_0', 'child_1', 'timepoint'
+    # merge_df: dataframe containing cell merges from create_tracks (see example script for usage)
+    #           necessary columns = 'parent_0', 'parent_1', 'child', 'timepoint'
     
     tree = np.array([]) 
     
-    ## Use track_df, split_df and merge_df to arrange nodes in the tree
-    # turn dataframe into numpy array
-    
+    ## Use track_df, split_df and merge_df to arrange nodes in the tree    
     for timepoint in np.unique(track_df['timepoint'].to_numpy()):
     
+        # turn dataframe into numpy array
         split_np = split_df[['parent', 'child_0', 'child_1']][split_df['timepoint']==timepoint].to_numpy()
         merge_np = merge_df[['parent_0', 'parent_1', 'child']][merge_df['timepoint']==timepoint].to_numpy()
         track_np = track_df['track_id'][track_df['timepoint']==timepoint].to_numpy()
@@ -136,22 +145,29 @@ def generate_tree(track_df,split_df,merge_df):
     ## Draw a graph
     fig =  plt.figure(0)
     fig.set_size_inches(35, 20)
-    for n in range(len(tree)):
-        #plt.vlines(x = n, ymin = -end[n]-1, ymax = -start[n], colors = 'blue')
-        plt.scatter(np.repeat(n,len(all_frames[n])),-all_frames[n])
-        plt.text(n,-start[n],str(int(tree[n])),fontsize=16)
+    
+    if 'colours' in track_df:
+        for n in range(len(tree)):
+            plt.scatter(np.repeat(n,len(all_frames[n])),-all_frames[n], 
+                        c = np.reshape(np.concatenate(track_df['colours'][track_df['track_id']==tree[n]].to_numpy()),[-1,3]))
+            plt.text(n,-start[n],str(int(tree[n])),fontsize=16)
+    else:
+        for n in range(len(tree)):
+            plt.scatter(np.repeat(n,len(all_frames[n])),-all_frames[n])
+            plt.text(n,-start[n],str(int(tree[n])),fontsize=16)
+        
     #add horizintal lines for cell division events
     for parent_node in split_df['parent'].unique():
         all_children = split_df[['child_0', 'child_1']][split_df['parent']==parent_node].to_numpy()
         all_xs = np.argwhere(np.isin(tree,all_children))
         y = end[np.argwhere(tree==parent_node)]
-        plt.hlines(y = -y-1, xmin = np.min(all_xs), xmax = np.max(all_xs), colors = 'blue')
+        plt.hlines(y = -y-1, xmin = np.min(all_xs), xmax = np.max(all_xs), colors = 'black')
     #add horizintal lines for cell merging events
     for child_node in merge_df['child'].unique():
         all_parents = merge_df[['parent_0', 'parent_1']][merge_df['child']==child_node].to_numpy()
         all_xs = np.argwhere(np.isin(tree,all_parents))
         y = start[np.argwhere(tree==child_node)]
-        plt.hlines(y = -y+1, xmin = np.min(all_xs), xmax = np.max(all_xs), colors = 'blue')
+        plt.hlines(y = -y+1, xmin = np.min(all_xs), xmax = np.max(all_xs), colors = 'black')
         
     return tree, start, end
 
@@ -163,9 +179,8 @@ def generate_tree(track_df,split_df,merge_df):
 # In[]: Calculate Gaussian mixture model parameters 
     
 def get_moments(data,resolution):
-    """Returns (height, centre, width)
-    the gaussian parameters of an ND distribution by calculating its
-    moments """
+    # Calculate ND Gaussian parameters of data
+    
     total = data.sum()
     XYZ = np.indices(data.shape).astype(float)
     d = len(data.shape)
@@ -181,27 +196,38 @@ def get_moments(data,resolution):
     for i in range(d):
         for j in range(d):
             width[i,j] = ((XYZ[i]-center[i])*(XYZ[j]-center[j])*data).sum()/total
+    #calculate integral
     integral = data.sum()
+
     return integral, center, width
 
 def fit_Gaussian_mixture(im,seg,label_file,resolution):
+    # Calculating Gaussian parameters of all segmented regions in an image
+    # im: 3D grayscale image normalised between 0 and 1
+    # seg: 3D integer label map
+    # label_file: file name of the label file; this is just to print out when list(map()) is used
+    # resolution: resolution of the image (usually in um)
     
     print(label_file)
     #find all unique labels
     labels = np.unique(seg)
     labels = labels[labels>0]
     K = len(labels)
+    #get bounding boxes for each label
+    label_props = pd.DataFrame(measure.regionprops_table(seg.astype(int),
+                                                         properties=["label","bbox"]))
     #estimate multivariate Gaussians within each region
     centers = []
     integrals = []
-    widths = []
+    widths = []    
     for lab in labels:
-        image = np.copy(im)
-        image[seg!=lab] = 0
+        #crop both images at the bounding box
+        box = label_props[["bbox-0","bbox-1","bbox-2","bbox-3","bbox-4","bbox-5"]][label_props['label']==lab].to_numpy()[0]
+        image = im[box[0]:box[3],box[1]:box[4],box[2]:box[5]].copy()
+        label_image = seg[box[0]:box[3],box[1]:box[4],box[2]:box[5]].copy()
+        image[label_image!=lab] = 0
+        #calculate Gaussian parameters
         integral, center, width = get_moments(image,resolution)
-        ############ How we calculate this integral matters for the final result. If a cell is too faint, its transition
-        # when using data.sum() is going to have a very small weight (because it moves a very small portion of the overall mass). 
-        #integral = np.sum(seg==lab)
         centers.append(center)
         integrals.append(integral)
         widths.append(width)
@@ -210,6 +236,9 @@ def fit_Gaussian_mixture(im,seg,label_file,resolution):
 # In[]: Optimal transport with sinkhorn regularisation
 
 def GW2_ak(pi0,pi1,mu0,mu1,S0,S1):
+    # Note from AK: this function is originally from gmmot. I modified it to use 
+    # sinkhorn regularisation instead of emd, because that produces better results
+    
     # return the GW2 discrete map and the GW2 distance between two GMM
     K0 = mu0.shape[0]
     K1 = mu1.shape[0]
@@ -223,18 +252,67 @@ def GW2_ak(pi0,pi1,mu0,mu1,S0,S1):
             M[k,l]  = GaussianW2(mu0[k,:],mu1[l,:],S0[k,:,:],S1[l,:,:])
     # Then we compute the OT distance or OT map thanks to the OT library
     wstar     = ot.sinkhorn(pi0,pi1,M,2,numItermax=10000,stopThr=1e-9)         # discrete transport plan # EDIT: I changed this from emd to sinkhorn (AK) as it was performing much better
-    distGW2   = np.sum(wstar*M)
-    return wstar,distGW2,M
+    #distGW2   = np.sum(wstar*M)
+    return wstar#,distGW2,M
     
 # In[]: Create tracks from transition matrices by searching for valid transitions
 
-def return_counts(numpy_array):
-    count_unique_elements = np.unique(numpy_array,return_counts=True)
-    count_dict = dict(zip(count_unique_elements[0],count_unique_elements[1]))
-    counts = np.array([count_dict[i] for i in numpy_array])
-    return counts
+def create_tracks(start_track_ids,target_labels,transition_matrix,time_point):
+    # Creating tracks based on the transition_matrix
+    # start_track_ids: track_ids of the cells at the start (i.e. columns)
+    # target_labels: labels of cell at the end (i.e. rows)
+    # transition_matrix: transition probability matrix
+    # time_point: time point
+    
+    # initialise split and merge dataframes
+    split_section = pd.DataFrame(columns=['timepoint','parent', 'child_0', 'child_1'])
+    merge_section = pd.DataFrame(columns=['timepoint', 'parent_0', 'parent_1', 'child'])
+    
+    # convert transition matrix into a valid matrix
+    matrix = valid_transition_ver_2(transition_matrix)>0
+    
+    # exclude 0 rows
+    matrix[start_track_ids==0,:] = 0
+    
+    # assign track ids to target_labels (this does not take merging or splitting into account so far)
+    target_track_ids = np.max(matrix * np.reshape(start_track_ids,[-1,1]),axis = 0)
+    
+    # for new or "new" cells, assign their target_label
+    target_track_ids[target_track_ids==0] = target_labels[target_track_ids==0]
+    
+    # look for mergers
+    merge_targets = np.where(np.sum(matrix, axis = 0) == 2)[0]
+    for ind in merge_targets:
+        # add merging cells to the merge dataframe
+        parents_ids = start_track_ids[np.where(matrix[:,ind]==1)[0]]
+        merge_section = pd.concat([merge_section, pd.DataFrame({'timepoint': [time_point], \
+                                                                'parent_0': [parents_ids[0]], \
+                                                                'parent_1': [parents_ids[1]], \
+                                                                'child': [target_labels[ind]]})])
+        # children of merged cells should have their own track id
+        target_track_ids[ind] = target_labels[ind]
+                                 
+    # look for splits
+    split_sources = np.where(np.sum(matrix, axis = 1) == 2)[0]
+    for ind in split_sources:
+        # add merging cells to the merge dataframe
+        children_ids = target_labels[np.where(matrix[ind,:]==1)[0]]
+        split_section = pd.concat([split_section, pd.DataFrame({'timepoint': [time_point], \
+                                                                'parent': [start_track_ids[ind]], \
+                                                                'child_0': [children_ids[0]], \
+                                                                'child_1': [children_ids[1]]})])
+        # children of splitting cells should have their own track id
+        target_track_ids[np.isin(target_labels,children_ids)] = children_ids
+        
+    # assign track ids
+    track_section = pd.DataFrame({'timepoint': time_point, 'label': target_labels, 'track_id': target_track_ids})
+    
+    return track_section, split_section, merge_section, target_track_ids
     
 def valid_transition_ver_2(transition_matrix):
+    # turn transition_matrix into the highest probability valid transition matrix 
+    # where cells may not split into more than two pieces and no more than two cells can merge at a time
+    
     transition = np.copy(transition_matrix)
 
     # max 2 in each row and column with a ratio at least 1:5
@@ -304,52 +382,8 @@ def valid_transition_ver_2(transition_matrix):
         
     return transition
 
-def create_tracks(start_track_ids,target_labels,transition_matrix,time_point):
-    
-    # initialise split and merge dataframes
-    split_section = pd.DataFrame(columns=['timepoint','parent', 'child_0', 'child_1'])
-    merge_section = pd.DataFrame(columns=['timepoint', 'parent_0', 'parent_1', 'child'])
-    
-    # convert transition matrix into a valid matrix
-    matrix = valid_transition_ver_2(transition_matrix)>0
-    
-    # exclude 0 rows
-    matrix[start_track_ids==0,:] = 0
-    
-    # assign track ids to target_labels (this does not take merging or splitting into account so far)
-    target_track_ids = np.max(matrix * np.reshape(start_track_ids,[-1,1]),axis = 0)
-    
-    # for new or "new" cells, assign their target_label
-    target_track_ids[target_track_ids==0] = target_labels[target_track_ids==0]
-    
-    # look for mergers
-    merge_targets = np.where(np.sum(matrix, axis = 0) == 2)[0]
-    for ind in merge_targets:
-        # add merging cells to the merge dataframe
-        parents_ids = start_track_ids[np.where(matrix[:,ind]==1)[0]]
-        merge_section = pd.concat([merge_section, pd.DataFrame({'timepoint': [time_point], \
-                                                                'parent_0': [parents_ids[0]], \
-                                                                'parent_1': [parents_ids[1]], \
-                                                                'child': [target_labels[ind]]})])
-        # children of merged cells should have their own track id
-        target_track_ids[ind] = target_labels[ind]
-                                 
-    # look for splits
-    split_sources = np.where(np.sum(matrix, axis = 1) == 2)[0]
-    for ind in split_sources:
-        # add merging cells to the merge dataframe
-        children_ids = target_labels[np.where(matrix[ind,:]==1)[0]]
-        split_section = pd.concat([split_section, pd.DataFrame({'timepoint': [time_point], \
-                                                                'parent': [start_track_ids[ind]], \
-                                                                'child_0': [children_ids[0]], \
-                                                                'child_1': [children_ids[1]]})])
-        # children of splitting cells should have their own track id
-        target_track_ids[np.isin(target_labels,children_ids)] = children_ids
-        
-    # assign track ids
-    track_section = pd.DataFrame({'timepoint': time_point, 'label': target_labels, 'track_id': target_track_ids})
-    
-    return track_section, split_section, merge_section, target_track_ids
-
-
-
+def return_counts(numpy_array):
+    count_unique_elements = np.unique(numpy_array,return_counts=True)
+    count_dict = dict(zip(count_unique_elements[0],count_unique_elements[1]))
+    counts = np.array([count_dict[i] for i in numpy_array])
+    return counts
