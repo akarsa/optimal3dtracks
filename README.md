@@ -1,6 +1,6 @@
 *Copyright (c) 2023-2024 Anita Karsa, University of Cambridge, UK*
 
-*Cell tracking with optimal transport is distributed under the terms of the GNU General Public License*
+*Cell tracking with Optimal Transport is distributed under the terms of the GNU General Public License*
 
 ABOUT
 -------------------------------------------------------------------------------
@@ -19,7 +19,7 @@ HOW TO USE
 -------------------------------------------------------------------------------
 First, install required packages (see dependencies).
 
-To perform unfolding (see src/Unfolding.py):
+To perform Cell tracking with optimal transport (see src/example.ipynb):
 
 1. Load or define image and label:
 image, label = create_dummy()
@@ -28,37 +28,29 @@ image, label = create_dummy()
 verts, faces = create_simplified_tessellation(label, num_vertices=30)
 * num_vertices: target number of vertices in the simplified tessellation
 
-3. Unfold tessellation
-verts_2d, faces_2d, dict_2d_3d = unfold_tessellation(
 
-    verts, faces, base_triangle=0, draw=0
-
-)
-* base_triangle: the index of the row in faces that contains the first triangle
-to consider (this will be the middle of the unfolded surface)
-* draw: 0 or 1 indicating whether the function should plot the unfolded
-tessellation or not
-
-4. Unfold and extract layers
-layers = unfolded_layers(
-    verts, faces, verts_2d, faces_2d, dict_2d_3d, image, n_layers=20
-)
-* n_layers: number of layers to be exported on both sides of the surface
-(i.e. layers will have 2*n_layers+1 slices)
 
 HOW TO ACKNOWLEDGE
 -------------------------------------------------------------------------------
-@software{anisotropic-stardist3d,
+@software{tracking_OT,
 
   author       = {Anita Karsa},
 
-  title        = {{Unfolding}},
+  title        = {{Cell tracking with Optimal Transport}},
 
   month        = feb,
 
   year         = 2024,
 
   url 	       = {https://github.com/akarsa/cell_tracking_with_optimal_transport}
+
+}
+
+@article{karsa2024cellsegtrack,
+
+  title={Automated 3D cell segmentation and cell tracking in light-sheet images of mouse embryos (manuscript under preparation)},
+
+  author={Karsa, Anita and Boulanger, Jerome and Archer, Matthew and Rapilly, Quentin and Abdelbaki????, Ahmed and Niakan, Kathy K. and Muresan, Leila},
 
 }
 
@@ -72,14 +64,18 @@ matplotlib (https://matplotlib.org)
 
 scikit-image (https://scikit-image.org)
 
-tqdm (https://tqdm.github.io)
+pandas (https://pandas.pydata.org)
 
-pymeshlab (https://pymeshlab.readthedocs.io)
+ot (https://pythonot.github.io/)
+
+gmmot (https://github.com/judelo/gmmot)
 
 
 CONTACT INFORMATION
 -------------------------------------------------------------------------------
 Anita Karsa, Ph.D.
+
+Cambridge Advanced Imaging Centre
 
 Dept. of Physiology, Development, and Neuroscience
 
