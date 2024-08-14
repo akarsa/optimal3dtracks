@@ -1,4 +1,4 @@
-<img src="docs/images/logo.png" width="300" />
+<img src="docs/images/logo.png" width="500" class="center"/>
 
 *Copyright (c) 2023-2024 Anita Karsa, University of Cambridge, UK*
 
