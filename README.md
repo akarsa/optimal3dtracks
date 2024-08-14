@@ -20,7 +20,7 @@ of the field of view. The tool also includes the option to save calculated track
 as an .xml file for manual track correction/curation using Fiji's TrackMate tool, 
 as well as customisable visualisation of the dendogram.    
 
-![](docs/images/all.gif)  
+![](docs/images/tracking_example.gif)  
 
 HOW TO USE
 -------------------------------------------------------------------------------
