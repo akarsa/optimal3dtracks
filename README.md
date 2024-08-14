@@ -1,3 +1,5 @@
+![](docs/images/logo.png)
+
 *Copyright (c) 2023-2024 Anita Karsa, University of Cambridge, UK*
 
 *Optimal3dTracks is distributed under the terms of the GNU General Public License*
