@@ -1,4 +1,4 @@
-![](docs/images/logo.png)
+<img src="docs/images/logo.png" width="300" />
 
 *Copyright (c) 2023-2024 Anita Karsa, University of Cambridge, UK*
 
