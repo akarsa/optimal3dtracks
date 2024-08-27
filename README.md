@@ -20,7 +20,9 @@ cells to divide into max. 2 cells between time points and max. 2 cells to merge
 into one between two time points. It does not account for cells going in and out 
 of the field of view. The tool also includes the option to save calculated tracks 
 as an .xml file for manual track correction/curation using Fiji's TrackMate tool, 
-as well as customisable visualisation of the dendogram.    
+as well as customisable visualisation of the dendogram.  
+
+Our companion method for 3D nucleus segmentation is downloadable from: https://github.com/akarsa/star-3d  
 
 ![](docs/images/tracking_example.gif)  
 
@@ -29,7 +31,6 @@ HOW TO USE
 First, install required packages (see dependencies).
 
 **To perform cell tracking with Optimal3dTracks** (see src/example.ipynb):
-
 ```
 # 1. Calculate 3D Gaussian parameters for each segmented region at each time point
 calculate_Gaussian_parameters(label_files, intensity_files, save_folder, resolution)
@@ -66,7 +67,7 @@ HOW TO ACKNOWLEDGE
 
   year         = 2024,
 
-  url 	       = {https://github.com/akarsa/Optimal3dTracks}
+  url 	       = {https://github.com/akarsa/optimal3dtracks}
 
 }
 
@@ -101,6 +102,8 @@ csbdeep (https://github.com/CSBDeep/CSBDeep)
 tifffile (https://github.com/cgohlke/tifffile)
 
 pathlib (https://github.com/budlight/pathlib)
+
+ipywidgets (https://github.com/jupyter-widgets/ipywidgets)
 
 
 CONTACT INFORMATION
