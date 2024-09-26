@@ -1,0 +1,28 @@
+The software has been extensively tested on a standard computer with Windows 11 OS and
+an Intel(R) Core(TM) i9-10980XE CPU @ 3.00GHz processor with 128 GB RAM, but it is
+likely to work on different systems and with less memory too.
+ 
+The version of each dependency used for testing is listed below, 
+but the software is likely to work with other versions as well.
+
+pip install numpy==1.24.3
+
+pip install scipy==1.10.1
+
+pip install matplotlib==3.7.1
+
+pip install scikit-image==0.20.0
+
+pip install pandas==1.5.3
+
+pip install POT==0.9.1
+
+pip install SimpleITK==2.3.0
+
+pip install csbdeep==0.7.4
+
+pip install tifffile==2023.2.28
+
+pip install pathlib==1.0.1
+
+pip install ipywidgets==8.0.4

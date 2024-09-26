@@ -26,11 +26,36 @@ Our companion method for 3D nucleus segmentation is downloadable from: https://g
 
 ![](docs/images/tracking_example.gif)  
 
+INSTALLATION AND SYSTEM REQUIREMENTS
+-------------------------------------------------------------------------------
+First, install required packages (see DEPENDENCIES or Requirements.txt). 
+
+Use `pip install optimal3dtracks` to install Optimal3dTracks. This should take up to
+a few minutes.
+
+For the manual track correction functionality, you will also need to download 
+optimal3dtracks/base_file.xml from https://github.com/akarsa/optimal3dtracks
+
+The software has been extensively tested on a standard computer with Windows 11 OS and
+an Intel(R) Core(TM) i9-10980XE CPU @ 3.00GHz processor with 128 GB RAM, but it is
+likely to work on different systems and with less memory too.
+ 
+The version of each dependency used for testing can be found in DEPENDENCIES and 
+Requirements.txt, but the software is likely to work with other versions as well.
+
+DEMO
+-------------------------------------------------------------------------------
+demo/demo.ipynb is a short demo performing tracking across the five time points in 
+demo/intensity and demo/label. This should run under a minute on a regular desktop and 
+produce the below dendogram while saving all intermediate results (Gaussian parameters, 
+affine transformations, track sections) in demo/. 
+
+<p align="center"><img src="demo/dendogram.png" width="500" /></p>
+
 HOW TO USE
 -------------------------------------------------------------------------------
-First, install required packages (see dependencies).
 
-**To perform cell tracking with Optimal3dTracks** (see src/example.ipynb):
+**To perform cell tracking with Optimal3dTracks** (see optimal3dtracks/example.ipynb):
 ```
 # 1. Calculate 3D Gaussian parameters for each segmented region at each time point
 calculate_Gaussian_parameters(label_files, intensity_files, save_folder, resolution)
@@ -44,13 +69,13 @@ track_df, split_df, merge_df = concatenate_track_sections(track_files,Gaussian_p
                                                           save_folder,max_number_of_cells_per_timepoint)
 ```
 
-**To save tracks as .xml for correction/curation in Fiji** (see src/example.ipynb):
+**To save tracks as .xml for correction/curation in Fiji** (see optimal3dtracks/example.ipynb):
 ```
 save_as_TrackMate(track_df,split_df,merge_df,label_files,dimensions,resolution,base_file,save_file)
 ```
 *Note: You can specify whether you'd like to correct tracks in 3D (dimensions = 3) or on the 2D MIPs (dimensions = 2)*
 
-**To plot the dendogram** (see src/example.ipynb):
+**To plot the dendogram** (see optimal3dtracks/example.ipynb):
 ```
 generate_tree(track_df, split_df, merge_df)
 ```
@@ -73,7 +98,7 @@ HOW TO ACKNOWLEDGE
 
 @article{karsa2024optimal3dtracks,
 
-  title={A novel pipeline for robust and accurate, automated 3D nucleus segmentation and tracking in light-sheet microscopy images (manuscript under preparation)},
+  title={STAR-3D and Optimal3dTracks: Advanced Deep Learning and Optimal Transport Techniques for Automated 3D Segmentation and Tracking in Pre-Implantation Embryos (manuscript under preparation)},
 
   author={Karsa, Anita and Boulanger, Jerome and Abdelbaki, Ahmed and Niakan, Kathy K. and Muresan, Leila},
 
@@ -81,29 +106,29 @@ HOW TO ACKNOWLEDGE
 
 DEPENDENCIES
 -------------------------------------------------------------------------------
-numpy (https://numpy.org)
+Python (3.11.4)
 
-scipy (https://scipy.org)
+numpy (1.24.3) (https://numpy.org)
 
-matplotlib (https://matplotlib.org)
+scipy (1.10.1) (https://scipy.org)
 
-scikit-image (https://scikit-image.org)
+matplotlib (3.7.1) (https://matplotlib.org)
 
-pandas (https://pandas.pydata.org)
+scikit-image (0.20.0) (https://scikit-image.org)
 
-ot (https://pythonot.github.io/)
+pandas (1.5.3) (https://pandas.pydata.org)
 
-gmmot (https://github.com/judelo/gmmot)
+POT (0.9.1) (https://pythonot.github.io/)
 
-SimpleITK (https://github.com/SimpleITK/SimpleITK)
+SimpleITK (2.3.0) (https://github.com/SimpleITK/SimpleITK)
 
-csbdeep (https://github.com/CSBDeep/CSBDeep)
+csbdeep (0.7.4) (https://github.com/CSBDeep/CSBDeep)
 
-tifffile (https://github.com/cgohlke/tifffile)
+tifffile (2023.2.28) (https://github.com/cgohlke/tifffile)
 
-pathlib (https://github.com/budlight/pathlib)
+pathlib (1.0.1) (https://github.com/budlight/pathlib)
 
-ipywidgets (https://github.com/jupyter-widgets/ipywidgets)
+ipywidgets (8.0.4) (https://github.com/jupyter-widgets/ipywidgets)
 
 
 CONTACT INFORMATION
