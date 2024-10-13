@@ -414,7 +414,8 @@ def fit_Gaussian_mixture(im, seg, resolution):
 # In[]: Calculate track sections between consecutive timepoints
   
 def calculate_track_sections(label_files, intensity_files, Gaussian_parameter_files, frames, save_folder_for_affine,
-                              save_folder_for_tracks, resolution, max_number_of_cells_per_timepoint):
+                              save_folder_for_tracks, resolution, max_number_of_cells_per_timepoint,
+                              include_split,include_merge):
     """
     Calculate track sections for segmented cells over consecutive time points.
 
@@ -427,6 +428,8 @@ def calculate_track_sections(label_files, intensity_files, Gaussian_parameter_fi
     - save_folder_for_tracks (str): Path to the folder where track section results will be saved.
     - resolution (float): Resolution parameter for affine registration (eg. in um).
     - max_number_of_cells_per_timepoint (int): An upper limit of number of cells segmented in any given frame.
+    - include_split (bool): Indicator for whether or not splits are allowed.
+    - include_merge (bool): Indicator for whether or not merges are allowed.
 
     Returns:
     - str: A message indicating the completion of the process.
@@ -535,7 +538,7 @@ def calculate_track_sections(label_files, intensity_files, Gaussian_parameter_fi
         include_merge = False  # Allowing merges to be detected could overcomplicate tracking
         # and it's usually easier to add merges manually because they are very rare
         track_section, split_section, merge_section, _ = \
-            create_tracks(lab_start, lab_target, transition_matrix, frame + 1, include_merge)
+            create_tracks(lab_start, lab_target, transition_matrix, frame + 1, include_split, include_merge)
 
         # Save track section
         with open(save_folder_for_tracks + '/' +
@@ -706,7 +709,7 @@ def GaussianW2(m0,m1,Sigma0,Sigma1):
     
 # In[]: Create tracks from transition matrices by searching for valid transitions
 
-def create_tracks(start_track_ids,target_labels,transition_matrix,time_point,include_merge):
+def create_tracks(start_track_ids,target_labels,transition_matrix,time_point,include_split,include_merge):
     """
     Create tracks from the transition_matrix by identifying the maximum probability
     valid transition matrix
@@ -716,6 +719,7 @@ def create_tracks(start_track_ids,target_labels,transition_matrix,time_point,inc
         target_labels (integer array): Labels of cells at the end point (i.e. rows).
         transition_matrix (ndarray): Transition probability matrix.
         time_point (int): Time point or frame number (of the child cells).
+        include_split (bool): Indicator for whether or not splits are allowed.
         include_merge (bool): Indicator for whether or not merges are allowed. 
 
     Returns:
@@ -735,11 +739,15 @@ def create_tracks(start_track_ids,target_labels,transition_matrix,time_point,inc
     merge_section = pd.DataFrame(columns=['timepoint', 'parent_0', 'parent_1', 'child'])
     
     # convert transition matrix into a valid matrix
-    match include_merge:
-        case True:
+    match [include_split, include_merge]:
+        case [True, True]:
             matrix = valid_transition_ver_2(transition_matrix)>0
-        case False:
-            matrix = valid_transition_ver_3(transition_matrix)>0   
+        case [True, False]:
+            matrix = valid_transition_ver_3(transition_matrix)>0 
+        case [False, True]:
+            matrix = np.transpose(valid_transition_ver_3(np.transpose(transition_matrix))>0) 
+        case [False, False]:
+            matrix = valid_transition_ver_4(transition_matrix)>0  
     
     # exclude 0 rows
     matrix[start_track_ids==0,:] = 0
@@ -926,6 +934,89 @@ def valid_transition_ver_3(transition_matrix):
             x = coordinates[0][all_nodes]
             y = coordinates[1][all_nodes]
             validity = np.prod(1-((return_counts(y)>1))) # if y 
+            #coordinate appears twice in the list -> validity = 0
+
+            # add probability of combination to probabilities list
+            probabilities.append(validity*np.sum(values[all_nodes]))
+
+        # calculate optimal combination and remove the rest of the values from the transition matrix
+        optimal_combination = int(np.where(probabilities == np.max(probabilities))[0][-1]) # The -1 here is selecting the last option on the list of max probabilities.
+                                                                                           # This is because e.g. 1e-6 + 1e-20 = 1e-6 for the computer but the right side is
+                                                                                           # actually, mathematically larger. Selecting the last option is selecting the
+                                                                                           # option with the most nodes included.
+        all_nodes = np.zeros(n_nodes).astype(bool)
+        select_nodes = np.array(list(str(bin(optimal_combination))[2:])).astype(bool)
+        all_nodes[-(len(select_nodes)):] = select_nodes
+
+        transition[mask_connect==colour+1] *= all_nodes
+        
+    return transition
+
+def valid_transition_ver_4(transition_matrix):
+    """
+    Turn transition_matrix into the highest probability valid transition matrix 
+    where cells are not allowed to split or merge 
+    
+    Args:
+        transition_matrix (ndarray): transition probability matrix.
+
+    Returns:
+        ndarray: highest probability valid transition matrix 
+        
+    """
+
+    transition = np.copy(transition_matrix)
+
+    # max 2 in each row with a ratio at least 1:5
+    mask = np.ones(transition.shape)
+    top2_per_row = np.sort(transition,axis=1)[:,-2:]
+    top2_per_row[:,-1] /= 5
+    mask[(transition - np.max(top2_per_row,axis = 1,keepdims=True))<0] = 0
+    mask[transition==0] = 0
+    transition*=mask
+    
+    # sort rest into 'connected' components
+    
+    connected_colour = 2
+    mask_connect = np.copy(mask).astype(int)
+    while np.sum(mask_connect==1)>0:
+        # pick a connection
+        x,y = np.where(mask_connect==1)
+        x = x[0]
+        y = y[0]
+        # colour it
+        mask_next = np.copy(mask_connect)
+        # propagate colour across the mask
+        mask_next[x,y] = connected_colour
+        while np.sum(mask_connect-mask_next)!=0:
+            x,y = np.where(mask_next==connected_colour)
+            mask_connect += mask_next - mask_connect # this is essentially mask_connect = mask_next but I didn't want to use assignment or copy
+            mask_next[x,:] = mask[x,:] * connected_colour
+            mask_next[:,y] = mask[:,y] * connected_colour
+
+        # increase colour
+        connected_colour += 1
+    
+    # find maximum valid combination per colour
+   
+    for colour in range(np.max(mask_connect)):
+        
+        coordinates = np.where(mask_connect==colour+1)
+        values = transition[mask_connect==colour+1]
+        n_nodes = len(values)
+
+        probabilities = []
+
+        for combination in range(2**n_nodes):
+            # generate a combination of nodes
+            all_nodes = np.zeros(n_nodes).astype(bool)
+            select_nodes = np.array(list(str(bin(combination))[2:])).astype(bool)
+            all_nodes[-(len(select_nodes)):] = select_nodes
+
+            # check validity of combination
+            x = coordinates[0][all_nodes]
+            y = coordinates[1][all_nodes]
+            validity = np.prod(1-((return_counts(x)>1))) * np.prod(1-((return_counts(y)>1))) # if x or y 
             #coordinate appears twice in the list -> validity = 0
 
             # add probability of combination to probabilities list

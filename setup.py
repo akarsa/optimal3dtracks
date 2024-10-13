@@ -9,7 +9,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='optimal3dtracks',  # The name of your package
-    version='0.0.4',  # Version of your package
+    version='0.0.5',  # Version of your package
     packages=find_packages(),  # Automatically find and include your packages
     # package_data={"optimal3dtracks": ["*.xml"]},
     install_requires=['numpy', 'scipy', 'matplotlib',
